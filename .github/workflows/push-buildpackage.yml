@@ -4,6 +4,8 @@ on:
   release:
     types:
     - published
+  workflow_dispatch:
+
 env:
   REGISTRIES_FILENAME: "registries.json"
 
@@ -16,17 +18,28 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
+    # - name: Parse Event
+    #   id: event
+    #   run: |
+    #     FULL_VERSION="$(jq -r '.release.tag_name' "${GITHUB_EVENT_PATH}" | sed s/^v//)"
+    #     MINOR_VERSION="$(echo "${FULL_VERSION}" | awk -F '.' '{print $1 "." $2 }')"
+    #     MAJOR_VERSION="$(echo "${FULL_VERSION}" | awk -F '.' '{print $1 }')"
+    #     echo "tag_full=${FULL_VERSION}" >> "$GITHUB_OUTPUT"
+    #     echo "tag_minor=${MINOR_VERSION}" >> "$GITHUB_OUTPUT"
+    #     echo "tag_major=${MAJOR_VERSION}" >> "$GITHUB_OUTPUT"
+    #     echo "download_tgz_file_url=$(jq -r '.release.assets[] | select(.name | endswith(".tgz")) | .url' "${GITHUB_EVENT_PATH}")" >> "$GITHUB_OUTPUT"
+    #     echo "download_cnb_file_url=$(jq -r '.release.assets[] | select(.name | endswith(".cnb")) | .url' "${GITHUB_EVENT_PATH}")" >> "$GITHUB_OUTPUT"
+
     - name: Parse Event
       id: event
       run: |
-        FULL_VERSION="$(jq -r '.release.tag_name' "${GITHUB_EVENT_PATH}" | sed s/^v//)"
-        MINOR_VERSION="$(echo "${FULL_VERSION}" | awk -F '.' '{print $1 "." $2 }')"
-        MAJOR_VERSION="$(echo "${FULL_VERSION}" | awk -F '.' '{print $1 }')"
-        echo "tag_full=${FULL_VERSION}" >> "$GITHUB_OUTPUT"
-        echo "tag_minor=${MINOR_VERSION}" >> "$GITHUB_OUTPUT"
-        echo "tag_major=${MAJOR_VERSION}" >> "$GITHUB_OUTPUT"
-        echo "download_tgz_file_url=$(jq -r '.release.assets[] | select(.name | endswith(".tgz")) | .url' "${GITHUB_EVENT_PATH}")" >> "$GITHUB_OUTPUT"
-        echo "download_cnb_file_url=$(jq -r '.release.assets[] | select(.name | endswith(".cnb")) | .url' "${GITHUB_EVENT_PATH}")" >> "$GITHUB_OUTPUT"
+        echo ${GITHUB_EVENT_PATH}
+        cat ${GITHUB_EVENT_PATH}
+        echo "tag_full=0.0.3" >> "$GITHUB_OUTPUT"
+        echo "tag_minor=0.0" >> "$GITHUB_OUTPUT"
+        echo "tag_major=0" >> "$GITHUB_OUTPUT"
+        echo "download_tgz_file_url=buildpack.tgz" >> "$GITHUB_OUTPUT"
+        echo "download_cnb_file_url=buildpackage.cnb" >> "$GITHUB_OUTPUT"
 
     - name: Download .cnb buildpack
       uses: paketo-buildpacks/github-config/actions/release/download-asset@main
@@ -91,6 +104,9 @@ jobs:
 
         ./scripts.publish.sh \
           --image-ref "docker://${IMAGE}:${{ steps.event.outputs.tag_full }}"
+
+        ## Remove below line
+        sudo skopeo --version
 
         # echo "${DOCKERHUB_PASSWORD}" | sudo skopeo login --username "${DOCKERHUB_USERNAME}" --password-stdin index.docker.io
         sudo skopeo copy "${IMAGE}:${{ steps.event.outputs.tag_full }}" "docker://${IMAGE}:${{ steps.event.outputs.tag_minor }}"
