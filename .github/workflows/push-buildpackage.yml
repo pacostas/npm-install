@@ -96,6 +96,9 @@ jobs:
         ./scripts.publish.sh \
           --image-ref "docker://${IMAGE}:${{ steps.event.outputs.tag_full }}"
 
+        ## Remove below line
+        sudo skopeo --version
+
         # echo "${DOCKERHUB_PASSWORD}" | sudo skopeo login --username "${DOCKERHUB_USERNAME}" --password-stdin index.docker.io
         sudo skopeo copy "${IMAGE}:${{ steps.event.outputs.tag_full }}" "docker://${IMAGE}:${{ steps.event.outputs.tag_minor }}"
         sudo skopeo copy "${IMAGE}:${{ steps.event.outputs.tag_full }}" "docker://${IMAGE}:${{ steps.event.outputs.tag_major }}"
