@@ -4,12 +4,14 @@ on:
   release:
     types:
     - published
+  workflow_dispatch:
+
 
 env:
   REGISTRIES_FILENAME: "registries.json"
-  GCR_REGISTRY: "gcr.io"
-  GCR_PASSWORD: ${{ secrets.GCR_PUSH_BOT_JSON_KEY }}
-  GCR_USERNAME: "_json_key"
+  GCR_REGISTRY: "ghcr.io"
+  GCR_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+  GCR_USERNAME: "pacostas"
   DOCKERHUB_REGISTRY: docker.io
   DOCKERHUB_USERNAME: ${{ secrets.PAKETO_BUILDPACKS_DOCKERHUB_USERNAME }}
   DOCKERHUB_PASSWORD: ${{ secrets.PAKETO_BUILDPACKS_DOCKERHUB_PASSWORD }}
@@ -22,18 +24,20 @@ jobs:
 
     - name: Checkout
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # gets full history
 
     - name: Parse Event
       id: event
       run: |
-        FULL_VERSION="$(jq -r '.release.tag_name' "${GITHUB_EVENT_PATH}" | sed s/^v//)"
+        FULL_VERSION="$(jq -r '.release.tag_name' "./github_event_path.json" | sed s/^v//)"
         MINOR_VERSION="$(echo "${FULL_VERSION}" | awk -F '.' '{print $1 "." $2 }')"
         MAJOR_VERSION="$(echo "${FULL_VERSION}" | awk -F '.' '{print $1 }')"
         echo "tag_full=${FULL_VERSION}" >> "$GITHUB_OUTPUT"
         echo "tag_minor=${MINOR_VERSION}" >> "$GITHUB_OUTPUT"
         echo "tag_major=${MAJOR_VERSION}" >> "$GITHUB_OUTPUT"
-        echo "download_tgz_file_url=$(jq -r '.release.assets[] | select(.name | endswith(".tgz")) | .url' "${GITHUB_EVENT_PATH}")" >> "$GITHUB_OUTPUT"
-        echo "download_cnb_file_url=$(jq -r --arg tag_full "$FULL_VERSION" '.release.assets[] | select(.name | endswith($tag_full + ".cnb")) | .url' "${GITHUB_EVENT_PATH}")" >> "$GITHUB_OUTPUT"
+        echo "download_tgz_file_url=$(jq -r '.release.assets[] | select(.name | endswith(".tgz")) | .url' "./github_event_path.json")" >> "$GITHUB_OUTPUT"
+        echo "download_cnb_file_url=$(jq -r --arg tag_full "$FULL_VERSION" '.release.assets[] | select(.name | endswith($tag_full + ".cnb")) | .url' "./github_event_path.json")" >> "$GITHUB_OUTPUT"
 
     - name: Download .cnb buildpack
       uses: paketo-buildpacks/github-config/actions/release/download-asset@main
