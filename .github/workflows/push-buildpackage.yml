@@ -4,8 +4,15 @@ on:
   release:
     types:
     - published
+
 env:
   REGISTRIES_FILENAME: "registries.json"
+  GCR_REGISTRY: "gcr.io"
+  GCR_PASSWORD: ${{ secrets.GCR_PUSH_BOT_JSON_KEY }}
+  GCR_USERNAME: "_json_key"
+  DOCKERHUB_REGISTRY: docker.io
+  DOCKERHUB_USERNAME: ${{ secrets.PAKETO_BUILDPACKS_DOCKERHUB_USERNAME }}
+  DOCKERHUB_PASSWORD: ${{ secrets.PAKETO_BUILDPACKS_DOCKERHUB_PASSWORD }}
 
 jobs:
   push:
@@ -74,16 +81,14 @@ jobs:
     - name: Docker login docker.io
       uses: docker/login-action@v3
       with:
-        username: ${{ secrets.PAKETO_BUILDPACKS_DOCKERHUB_USERNAME }}
-        password: ${{ secrets.PAKETO_BUILDPACKS_DOCKERHUB_PASSWORD }}
-        registry: docker.io
+        username: ${{ env.DOCKERHUB_USERNAME }}
+        password: ${{ env.DOCKERHUB_PASSWORD }}
+        registry: ${{ env.DOCKERHUB_REGISTRY }}
 
     - name: Push to DockerHub
       if: ${{  steps.parse_configs.outputs.push_to_dockerhub == 'true' }}
       id: push
       env:
-        DOCKERHUB_USERNAME: ${{ secrets.PAKETO_BUILDPACKS_DOCKERHUB_USERNAME }}
-        DOCKERHUB_PASSWORD: ${{ secrets.PAKETO_BUILDPACKS_DOCKERHUB_PASSWORD }}
         GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
       run: |
         REPOSITORY="${GITHUB_REPOSITORY_OWNER/-/}/${GITHUB_REPOSITORY#${GITHUB_REPOSITORY_OWNER}/}" # translates 'paketo-buildpacks/bundle-install' to 'paketobuildpacks/bundle-install'
@@ -93,34 +98,27 @@ jobs:
           --buildpack-archive ./buildpack.tgz \
           --image-ref "${IMAGE}:${{ steps.event.outputs.tag_full }}"
 
-        # echo "${DOCKERHUB_PASSWORD}" | sudo skopeo login --username "${DOCKERHUB_USERNAME}" --password-stdin index.docker.io
-        sudo skopeo copy "${IMAGE}:${{ steps.event.outputs.tag_full }}" "docker://${IMAGE}:${{ steps.event.outputs.tag_minor }}"
-        sudo skopeo copy "${IMAGE}:${{ steps.event.outputs.tag_full }}" "docker://${IMAGE}:${{ steps.event.outputs.tag_major }}"
-        sudo skopeo copy "${IMAGE}:${{ steps.event.outputs.tag_full }}" "docker://${IMAGE}:latest"
+        sudo skopeo copy "${IMAGE}:${{ steps.event.outputs.tag_full }}" "${IMAGE}:${{ steps.event.outputs.tag_minor }}"
+        sudo skopeo copy "${IMAGE}:${{ steps.event.outputs.tag_full }}" "${IMAGE}:${{ steps.event.outputs.tag_major }}"
+        sudo skopeo copy "${IMAGE}:${{ steps.event.outputs.tag_full }}" "${IMAGE}:latest"
         echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
         echo "digest=$(sudo skopeo inspect "${IMAGE}:${{ steps.event.outputs.tag_full }}" | jq -r .Digest)" >> "$GITHUB_OUTPUT"
 
     - name: Docker login gcr.io
       uses: docker/login-action@v3
-      env:
-        GCR_REGISTRY: "gcr.io"
-        GCR_USERNAME: "_json_key"
       if: ${{ steps.parse_configs.outputs.push_to_gcr == 'true' }}
       with:
         username: ${{ env.GCR_USERNAME }}
-        password: ${{ secrets.GCR_PUSH_BOT_JSON_KEY }}
+        password: ${{ env.GCR_PASSWORD }}
         registry: ${{ env.GCR_REGISTRY }}
 
     - name: Push to GCR
       if: ${{ steps.parse_configs.outputs.push_to_gcr == 'true' }}
-      env:
-        GCR_PUSH_BOT_JSON_KEY: ${{ secrets.GCR_PUSH_BOT_JSON_KEY }}
       run: |
-        echo "${GCR_PUSH_BOT_JSON_KEY}" | sudo skopeo login --username _json_key --password-stdin gcr.io
-        sudo skopeo copy "${{ steps.push.outputs.image }}" "docker://gcr.io/${{ github.repository }}:${{ steps.event.outputs.tag_full }}"
-        sudo skopeo copy "${{ steps.push.outputs.image }}" "docker://gcr.io/${{ github.repository }}:${{ steps.event.outputs.tag_minor }}"
-        sudo skopeo copy "${{ steps.push.outputs.image }}" "docker://gcr.io/${{ github.repository }}:${{ steps.event.outputs.tag_major }}"
-        sudo skopeo copy "${{ steps.push.outputs.image }}" "docker://gcr.io/${{ github.repository }}:latest"
+        sudo skopeo copy "${{ steps.push.outputs.image }}" "docker://${{ env.GCR_REGISTRY }}/${{ github.repository }}:${{ steps.event.outputs.tag_full }}"
+        sudo skopeo copy "${{ steps.push.outputs.image }}" "docker://${{ env.GCR_REGISTRY }}/${{ github.repository }}:${{ steps.event.outputs.tag_minor }}"
+        sudo skopeo copy "${{ steps.push.outputs.image }}" "docker://${{ env.GCR_REGISTRY }}/${{ github.repository }}:${{ steps.event.outputs.tag_major }}"
+        sudo skopeo copy "${{ steps.push.outputs.image }}" "docker://${{ env.GCR_REGISTRY }}/${{ github.repository }}:latest"
 
     - name: Register with CNB Registry
       uses: docker://ghcr.io/buildpacks/actions/registry/request-add-entry:main
