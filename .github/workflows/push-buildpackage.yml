@@ -117,11 +117,15 @@ jobs:
         ## Validate that the digest pushed to registry matches with the one mentioned on the readme file
         pushed_image_index_digest=$(sudo skopeo inspect "docker://${DOCKERHUB_REGISTRY}/${IMAGE}:${{ steps.event.outputs.tag_full }}" | jq -r .Digest)
 
+        cat ./index-digest.sha256
+        echo $pushed_image_index_digest
+
         if [ "$(cat ./index-digest.sha256)" != "$pushed_image_index_digest" ]; then
           echo "Image index digest pushed to registry does not match with the one mentioned on the readme file"
           exit 1;
         fi
 
+        sudo skopeo --version
         sudo skopeo copy "docker://${DOCKERHUB_REGISTRY}/${IMAGE}:${{ steps.event.outputs.tag_full }}" "docker://${DOCKERHUB_REGISTRY}/${IMAGE}:${{ steps.event.outputs.tag_minor }}" --multi-arch all
         sudo skopeo copy "docker://${DOCKERHUB_REGISTRY}/${IMAGE}:${{ steps.event.outputs.tag_full }}" "docker://${DOCKERHUB_REGISTRY}/${IMAGE}:${{ steps.event.outputs.tag_major }}" --multi-arch all
         sudo skopeo copy "docker://${DOCKERHUB_REGISTRY}/${IMAGE}:${{ steps.event.outputs.tag_full }}" "docker://${DOCKERHUB_REGISTRY}/${IMAGE}:latest" --multi-arch all
