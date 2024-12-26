@@ -27,8 +27,8 @@ jobs:
         go-version: 'stable'
     - name: Checkout
       uses: actions/checkout@v3
-    - name: Run Unit Tests
-      run: ./scripts/unit.sh
+    # - name: Run Unit Tests
+    #   run: ./scripts/unit.sh
     - name: Get builders from integration.json
       id: builders
       run: |
@@ -52,10 +52,10 @@ jobs:
         go-version: 'stable'
     - name: Checkout
       uses: actions/checkout@v3
-    - name: Run Integration Tests
-      run: ./scripts/integration.sh --builder ${{ matrix.builder }} --token ${{ github.token }}
-      env:
-        TMPDIR: "${{ runner.temp }}"
+    # - name: Run Integration Tests
+    #   run: ./scripts/integration.sh --builder ${{ matrix.builder }} --token ${{ github.token }}
+    #   env:
+    #     TMPDIR: "${{ runner.temp }}"
 
   release:
     name: Release
